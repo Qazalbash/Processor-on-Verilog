@@ -1,7 +1,7 @@
 module Control_Unit(
     input  [6:0] Opcode,
-    output reg Branch, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite,
-    output reg [1:0] ALUOp
+    output reg [1:0] ALUOp,
+    output reg Branch, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite
 );
     always@(*) begin    
       case(Opcode)

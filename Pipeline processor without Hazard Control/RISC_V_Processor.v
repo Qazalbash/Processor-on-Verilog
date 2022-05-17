@@ -1,5 +1,4 @@
 `include "MUX.v"
-// `include "MUX_3_1.v"
 `include "adder.v"
 `include "alu_64.v"
 `include "alu_control.v"
@@ -75,7 +74,7 @@ module RISC_V_Processor(
             .funct7(funct7)
         );
 
-    Control_Unit c1(
+    Control_Unit cu(
             .Opcode(Opcode),
             .Branch(Branch), 
             .MemRead(MemRead), 
@@ -92,13 +91,13 @@ module RISC_V_Processor(
         );
     
     registerFile rFile(
-            .WriteData(MuxMemOut), 
+            .WriteData(MEM_WB_WriteData), 
             .rs1(rs1), 
             .rs2(rs2), 
-            .rd(rd), 
+            .rd(MEM_WB_rd), 
             .clk(clk), 
             .reset(reset), 
-            .RegWrite(RegWrite), 
+            .RegWrite(MEM_WB_RegWrite), 
             .ReadData1(ReadData1),
             .ReadData2(ReadData2)
         );
@@ -160,7 +159,7 @@ module RISC_V_Processor(
             .O(data_out_c1),
             .S(Forward_A)
     );
-
+    
     MUX_3_1 muxBranch2(
             .A(ID_EX_ReadData2),
             .B(MEM_WB_WriteData),
@@ -180,13 +179,6 @@ module RISC_V_Processor(
             .ALUOp(ID_EX_ALUOp),
             .Funct(ID_EX_Instruction),
             .Operation(Operation)
-        );
-    
-    MUX muxALUSrc(
-            .B(ReadData2),
-            .A(imm_data),
-            .O(MuxALUOut),
-            .S(ALUSrc)
         );
 
     ALU_64_bit ALU64(

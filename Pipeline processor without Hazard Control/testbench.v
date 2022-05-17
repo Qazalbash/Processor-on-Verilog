@@ -1,4 +1,5 @@
 `include "RISC_V_Processor.v"
+// `include "pipeline.v"
 
 `timescale 1ns/1ns
 

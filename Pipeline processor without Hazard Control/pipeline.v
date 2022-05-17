@@ -1,32 +1,31 @@
-`include "ALU.v"
-`include "ALUControl.v"
-`include "Adder.v"
-`include "ControlUnit.v" 
-`include "DataMemory.v"
-`include "EX_MEM.v"
-`include "Forwarding_Unit.v"
-`include "ID_EX.v"
-`include "IF_ID.v"
-`include "ImmediateDataExtractor.v"
-`include "InstructionMemory.v"
-`include "InstructionParser.v"
-`include "MEM_WB.v"
 `include "MUX.v"
-`include "MUX_3bit.v"
-`include "ProgramCounter.v"
-`include "RegisterFile.v"
+`include "adder.v"
+`include "alu_64.v"
+`include "alu_control.v"
+`include "control_unit.v"
+`include "data_memory.v"
+`include "ex_mem.v"
+`include "forwarding_unit.v"
+`include "id_ex.v"
+`include "if_id.v"
+`include "immediate_generator.v"
+`include "instruction_memory.v"
+`include "instruction_parser.v"
+`include "mem_wb.v"
+`include "program_counter.v"
+`include "reg_file.v"
 
 module RISC_V_Processor(clk, reset);
   input clk;
   input reset;
   
-  wire [63:0] Adder1Out, EX_MEM_ALU_Out, EX_MEM_MUX_ForwardB, EX_MEM_PC_Adder, ID_EX_Immediate, ID_EX_PC_Out, ID_EX_ReadData1, ID_EX_ReadData2, IF_ID_PC_Out, MEM_WB_ALU_Out, MEM_WB_Read_Data, MEM_WB_WriteData, PC_In, PC_Ou, ReadData1, ReadData2, Read_Data, WriteData, data_out, data_out_c1, data_out_c2, imm_data, out1, result;
+  wire [63:0] Adder1Out, EX_MEM_ALU_Out, EX_MEM_MUX_ForwardB, EX_MEM_PC_Adder, ID_EX_Immediate, ID_EX_PC_Out, ID_EX_ReadData1, ID_EX_ReadData2, IF_ID_PC_Out, MEM_WB_ALU_Out, MEM_WB_Read_Data, MEM_WB_WriteData, PC_In, PC_Out, ReadData1, ReadData2, Read_Data, WriteData, data_out, data_out_c1, data_out_c2, imm_data, out1, result;
   
-  wire [31:0] IF_ID_Instruction, Instruction;
+  wire [31:0] IF_ID_Instruction, instruction;
   
   wire [6:0] opcode, funct7;
   
-  wire [4:0] EX_MEM_rd, ID_EX_rd, ID_EX_rs1, ID_EX_rs2, MEM_WB_rd, rd, rs, rs2;
+  wire [4:0] EX_MEM_rd, ID_EX_rd, ID_EX_rs1, ID_EX_rs2, MEM_WB_rd, rd, rs1, rs2;
   
   wire [3:0] Funct, ID_EX_Instruction, IF_ID_Instruction_EX, Operation;
   
@@ -38,23 +37,23 @@ module RISC_V_Processor(clk, reset);
 
 
 
-  Program_Counter a1(clk, reset, PC_In, PC_Out);
+  Program_Counter PC(clk, reset, PC_In, PC_Out);
   
-  Adder a11(PC_Out,64'd4,Adder1Out);
+  Adder adder1(PC_Out,64'd4,Adder1Out);
   
-  Instruction_Memory a2(PC_Out, Instruction);
+  Instruction_Memory iMem(PC_Out, instruction);
   
-  IF_ID b1(clk, reset, Instruction, PC_Out, IF_ID_Instruction, IF_ID_PC_Out);
+  IF_ID if_id(clk, reset, instruction, PC_Out, IF_ID_Instruction, IF_ID_PC_Out);
   
-  instruction_parser a3(IF_ID_Instruction, opcode, rd, funct3, rs1, rs2, funct7);
+  instruction_parser iParser(IF_ID_Instruction, opcode, rd, funct3, rs1, rs2, funct7);
   
-  Control_Unit a4(opcode, ALUOp, Branch, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite);
-  
-  
-  data_extractor a5(IF_ID_Instruction, imm_data);
+  Control_Unit cu(opcode, ALUOp, Branch, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite);
   
   
-  registerFile a6(MEM_WB_WriteData, rs1, rs2, MEM_WB_rd, MEM_WB_RegWrite, clk, reset, ReadData1, ReadData2 );
+  immediate_generator Igen(IF_ID_Instruction, imm_data);
+  
+  
+  registerFile rFile(MEM_WB_WriteData, rs1, rs2, MEM_WB_rd, MEM_WB_RegWrite, clk, reset, ReadData1, ReadData2 );
   
   
   assign IF_ID_Instruction_EX = {IF_ID_Instruction[30], IF_ID_Instruction[14:12]};
@@ -68,12 +67,12 @@ module RISC_V_Processor(clk, reset);
   
   Adder a12(ID_EX_PC_Out, ID_EX_Immediate << 1,out1);
   
-  mux_3bit c1(ID_EX_ReadData1, MEM_WB_WriteData, EX_MEM_ALU_Out, Forward_A, data_out_c1);
+  MUX_3_1 c1(ID_EX_ReadData1, MEM_WB_WriteData, EX_MEM_ALU_Out, Forward_A, data_out_c1);
   
-  mux_3bit c2(ID_EX_ReadData2, MEM_WB_WriteData, EX_MEM_ALU_Out, Forward_B, data_out_c2);
+  MUX_3_1 c2(ID_EX_ReadData2, MEM_WB_WriteData, EX_MEM_ALU_Out, Forward_B, data_out_c2);
   
   
-  mux c3(data_out_c2, ID_EX_Immediate, ID_EX_ALUSrc, data_out);
+  MUX c3(data_out_c2, ID_EX_Immediate, ID_EX_ALUSrc, data_out);
   
   
 
@@ -82,7 +81,7 @@ module RISC_V_Processor(clk, reset);
 
   
   
-  ALU a9(data_out_c1, data_out, Operation, funct3, zero, result);
+  ALU_64_bit a9(data_out_c1, data_out, Operation, funct3, zero, result);
 
   F_Unit f1(ID_EX_rs1, ID_EX_rs2, EX_MEM_rd, EX_MEM_RegWrite, MEM_WB_rd, MEM_WB_RegWrite,
             Forward_A, Forward_B);
@@ -103,7 +102,7 @@ module RISC_V_Processor(clk, reset);
   
   Adder a19(PC_Out,64'd4,Adder1Out);
   
-  mux a13(Adder1Out, EX_MEM_PC_Adder, EX_MEM_Branch & EX_MEM_Zero, PC_In);
+  MUX a13(Adder1Out, EX_MEM_PC_Adder, EX_MEM_Branch & EX_MEM_Zero, PC_In);
 
  
   
@@ -112,7 +111,7 @@ module RISC_V_Processor(clk, reset);
   
 
   
-  mux a14(MEM_WB_ALU_Out, MEM_WB_Read_Data, MEM_WB_MemtoReg, MEM_WB_WriteData);
+  MUX a14(MEM_WB_ALU_Out, MEM_WB_Read_Data, MEM_WB_MemtoReg, MEM_WB_WriteData);
   
   
 endmodule
